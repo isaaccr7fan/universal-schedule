@@ -1,0 +1,1001 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+   <title>My Schedule App</title>
+  
+   <!-- CLOCK FAVICON -->
+   <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2784/2784459.png" type="image/png">
+  
+   <!-- PWA META TAGS -->
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+   <meta name="apple-mobile-web-app-title" content="My Schedule">
+   <meta name="theme-color" content="#0f172a">
+  
+   <!-- Embedded Manifest -->
+   <link rel="manifest" href='data:application/manifest+json;charset=utf-8,{"name":"My Schedule","short_name":"Schedule","start_url":".","display":"standalone","background_color":"#000000","theme_color":"#0f172a","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/2784/2784459.png","sizes":"512x512","type":"image/png"}]}'>
+
+
+   <script src="https://cdn.tailwindcss.com"></script>
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+   <style>
+       body {
+           background-color: #000;
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           min-height: 100vh;
+           margin: 0;
+           font-family: 'Inter', sans-serif;
+           overflow: hidden;
+           overscroll-behavior: none;
+       }
+
+
+       /* Scaler Wrapper */
+       #scaler {
+           transform-origin: center center;
+           transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           width: 1365px;
+           height: 767px;
+       }
+
+
+       /* The Dashboard Container */
+       #schedule-container {
+           width: 1365px;
+           height: 767px;
+           /* Default Dark Gradient */
+           background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+           background-size: cover;
+           background-position: center;
+           color: white;
+           position: relative;
+           box-shadow: 0 0 50px rgba(0,0,0,0.8);
+           overflow: hidden;
+           display: flex;
+           flex-direction: column;
+           border-radius: 12px;
+       }
+      
+       #bg-overlay {
+           position: absolute;
+           top: 0;
+           left: 0;
+           width: 100%;
+           height: 100%;
+           background: rgba(15, 23, 42, 0.6);
+           z-index: 0;
+           pointer-events: none;
+       }
+
+
+       body.is-fullscreen #schedule-container {
+           border-radius: 2px;
+           box-shadow: none;
+       }
+
+
+       .glass-panel {
+           background: rgba(255, 255, 255, 0.05);
+           backdrop-filter: blur(12px);
+           border: 1px solid rgba(255, 255, 255, 0.15);
+           border-radius: 12px;
+           box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+       }
+
+
+       .period-card {
+           transition: all 0.3s ease;
+           position: relative; /* For delete button positioning */
+       }
+
+
+       .period-card:hover {
+           transform: translateX(5px);
+           background: rgba(255, 255, 255, 0.15);
+           border-left: 4px solid #38bdf8;
+       }
+      
+       .class-input {
+           background: transparent;
+           border: none;
+           color: white;
+           width: 100%;
+           outline: none;
+           text-overflow: ellipsis;
+           text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+       }
+      
+       .class-input::placeholder {
+           color: rgba(255, 255, 255, 0.5);
+       }
+
+
+       /* Time Input Styling */
+       .time-input {
+           background: rgba(0,0,0,0.3);
+           border: 1px solid rgba(255,255,255,0.2);
+           color: white;
+           border-radius: 4px;
+           padding: 0 4px;
+           font-size: 0.8rem;
+           width: 80px;
+           text-align: center;
+       }
+      
+       .time-badge {
+           font-variant-numeric: tabular-nums;
+           text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+       }
+
+
+       /* Settings Modal */
+       #settings-modal {
+           position: absolute;
+           top: 0;
+           left: 0;
+           width: 100%;
+           height: 100%;
+           background: rgba(0,0,0,0.8);
+           backdrop-filter: blur(5px);
+           z-index: 100;
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           opacity: 0;
+           pointer-events: none;
+           transition: opacity 0.3s ease;
+       }
+      
+       #settings-modal.active {
+           opacity: 1;
+           pointer-events: all;
+       }
+
+
+       .modal-content {
+           background: #1e293b;
+           border: 1px solid #475569;
+           padding: 2rem;
+           border-radius: 16px;
+           width: 500px;
+           max-width: 90%;
+           color: white;
+           box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+       }
+
+
+       .delete-btn {
+           position: absolute;
+           right: -10px;
+           top: -10px;
+           background: #ef4444;
+           color: white;
+           width: 24px;
+           height: 24px;
+           border-radius: 50%;
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           font-size: 12px;
+           cursor: pointer;
+           box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+           z-index: 20;
+           display: none; /* Hidden unless editing */
+       }
+
+
+       body.is-editing .delete-btn {
+           display: flex;
+       }
+
+
+       .orb {
+           position: absolute;
+           border-radius: 50%;
+           filter: blur(80px);
+           z-index: 0;
+           opacity: 0.4;
+       }
+       .orb-1 { width: 400px; height: 400px; background: #3b82f6; top: -100px; right: -100px; }
+       .orb-2 { width: 300px; height: 300px; background: #8b5cf6; bottom: -50px; left: -50px; }
+      
+       .hidden { display: none !important; }
+
+
+   </style>
+</head>
+<body>
+
+
+   <!-- Scaler Wrapper -->
+   <div id="scaler">
+       <div id="schedule-container" class="p-8">
+          
+           <!-- Dark Overlay for readability -->
+           <div id="bg-overlay"></div>
+          
+           <!-- Background Decor (Orbs) -->
+           <div id="orbs-container">
+               <div class="orb orb-1"></div>
+               <div class="orb orb-2"></div>
+           </div>
+
+
+           <!-- Header -->
+           <header class="relative z-10 flex justify-between items-end mb-6 pb-4 border-b border-gray-500/30">
+               <div>
+                   <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1 drop-shadow-lg">
+                       Daily Schedule
+                   </h1>
+                   <p class="text-blue-200 text-lg font-light flex items-center gap-2 drop-shadow-md">
+                       <i class="fa-regular fa-clock"></i> <span id="header-time-range">8:10 AM - 2:55 PM</span>
+                   </p>
+               </div>
+               <div class="flex items-end gap-3">
+                   <div class="text-right mr-2">
+                       <div class="text-sm text-gray-300 drop-shadow">Current Time</div>
+                       <div id="live-clock" class="text-3xl font-bold font-mono text-white drop-shadow-lg">--:--:--</div>
+                   </div>
+                  
+                   <!-- Settings Button -->
+                   <button onclick="toggleSettings()" class="mb-1 p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-all text-white border border-gray-500 cursor-pointer shadow-lg group" title="Settings">
+                       <i class="fa-solid fa-gear text-lg group-hover:rotate-90 transition-transform duration-500"></i>
+                   </button>
+
+
+                   <!-- Download Button -->
+                   <button onclick="downloadSourceCode()" class="mb-1 p-3 bg-cyan-600 hover:bg-cyan-500 rounded-lg transition-all text-white border border-cyan-500 cursor-pointer shadow-lg group" title="Download HTML File">
+                       <i class="fa-solid fa-file-arrow-down text-lg group-hover:scale-110 transition-transform"></i>
+                   </button>
+
+
+                   <!-- Install Button (Hidden by default) -->
+                   <button id="install-btn" class="hidden mb-1 p-3 bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-all text-white border border-emerald-500 cursor-pointer shadow-lg group" title="Install App">
+                       <i class="fa-solid fa-download text-lg group-hover:scale-110 transition-transform"></i>
+                   </button>
+
+
+                   <!-- Notification Button -->
+                   <button onclick="requestNotificationPermission()" class="mb-1 p-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all text-white border border-indigo-500 cursor-pointer shadow-lg group relative" title="Enable 5-min Warnings">
+                       <i id="bell-icon" class="fa-solid fa-bell-slash text-lg group-hover:scale-110 transition-transform"></i>
+                       <span id="notif-status" class="absolute -top-1 -right-1 flex h-3 w-3 hidden">
+                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                         <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                       </span>
+                   </button>
+
+
+                   <!-- Fullscreen Button -->
+                   <button onclick="toggleCinemaMode()" class="mb-1 p-3 bg-red-600 hover:bg-red-500 rounded-lg transition-all text-white border border-red-500 cursor-pointer shadow-lg group" title="Full Screen">
+                       <i id="fs-icon" class="fa-solid fa-expand text-lg group-hover:scale-110 transition-transform"></i>
+                   </button>
+               </div>
+           </header>
+
+
+           <!-- SETTINGS MODAL -->
+           <div id="settings-modal">
+               <div class="modal-content">
+                   <div class="flex justify-between items-center mb-6">
+                       <h2 class="text-2xl font-bold">Settings</h2>
+                       <button onclick="toggleSettings()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+                   </div>
+
+
+                   <div class="space-y-6">
+                       <!-- Background Section -->
+                       <div>
+                           <h3 class="text-sm font-bold text-gray-400 uppercase mb-3">Background</h3>
+                           <div class="flex gap-2">
+                               <button onclick="document.getElementById('bg-upload').click()" class="flex-1 bg-blue-600 hover:bg-blue-500 py-2 rounded text-sm font-semibold">Upload Image</button>
+                               <button onclick="document.getElementById('color-picker').click()" class="flex-1 bg-purple-600 hover:bg-purple-500 py-2 rounded text-sm font-semibold">Solid Color</button>
+                               <button onclick="resetBackground()" class="px-4 bg-gray-600 hover:bg-gray-500 py-2 rounded text-sm font-semibold">Reset</button>
+                           </div>
+                           <!-- Hidden Inputs -->
+                           <input type="file" id="bg-upload" accept="image/*" class="hidden" onchange="handleImageUpload(this)">
+                           <input type="color" id="color-picker" class="hidden" onchange="handleColorPick(this)">
+                       </div>
+
+
+                       <!-- Schedule Section -->
+                       <div>
+                           <h3 class="text-sm font-bold text-gray-400 uppercase mb-3">Schedule Editor</h3>
+                           <div class="flex gap-2 mb-2">
+                               <button onclick="toggleEditMode()" id="edit-mode-btn" class="flex-1 bg-yellow-600 hover:bg-yellow-500 py-2 rounded text-sm font-semibold">
+                                   <i class="fa-solid fa-pen-to-square mr-2"></i> Edit Periods & Times
+                               </button>
+                               <button onclick="addPeriod()" class="flex-1 bg-green-600 hover:bg-green-500 py-2 rounded text-sm font-semibold">
+                                   <i class="fa-solid fa-plus mr-2"></i> Add Period
+                               </button>
+                           </div>
+                           <p class="text-xs text-gray-400">Enable "Edit Periods" to change times or delete blocks.</p>
+                       </div>
+                   </div>
+               </div>
+           </div>
+
+
+           <!-- IN-APP NOTIFICATION BANNER -->
+           <div id="in-app-toast" class="absolute top-28 left-0 right-0 mx-auto w-max max-w-md bg-indigo-600/90 backdrop-blur-md border border-indigo-400 text-white px-6 py-4 rounded-2xl shadow-2xl z-50 transform transition-all duration-500 opacity-0 -translate-y-10 flex items-center gap-4 pointer-events-none">
+               <div class="bg-white/20 p-3 rounded-full animate-pulse">
+                   <i class="fa-solid fa-bell text-xl"></i>
+               </div>
+               <div>
+                   <h3 class="font-bold text-xs uppercase tracking-wider text-indigo-200">Class Ending Soon</h3>
+                   <p id="toast-message" class="text-xl font-bold">Period 1 ends in 5 mins</p>
+               </div>
+           </div>
+
+
+           <!-- Dynamic Grid Content -->
+           <div id="schedule-grid" class="relative z-10 grid grid-cols-2 gap-8 h-full overflow-y-auto pr-2 pb-2">
+               <!-- Javascript will inject columns here -->
+           </div>
+
+
+           <!-- Footer Info with Credit -->
+           <div class="absolute bottom-4 left-8 text-gray-400 text-xs font-medium z-10">
+               Made by Isaac Vargas-Torres
+           </div>
+           <div class="absolute bottom-4 right-8 text-gray-400 text-xs z-10">
+               3 min transition times
+           </div>
+       </div>
+   </div>
+
+
+   <script>
+       // --- DATA STATE ---
+       // Default structure
+       const defaultSchedule = [
+           { id: 'hr', name: 'Homeroom', start: '08:10', end: '08:28', color: 'border-purple-500', num: '' },
+           { id: 'p1', name: 'Period 1', start: '08:31', end: '09:11', color: 'border-transparent', num: '1' },
+           { id: 'p2', name: 'Period 2', start: '09:14', end: '09:54', color: 'border-transparent', num: '2' },
+           { id: 'p3', name: 'Period 3', start: '09:57', end: '10:37', color: 'border-transparent', num: '3' },
+           { id: 'p4', name: 'Period 4', start: '10:40', end: '11:20', color: 'border-transparent', num: '4' },
+           { id: 'p5', name: 'Period 5', start: '11:23', end: '12:03', color: 'border-transparent', num: '5' },
+           { id: 'p6', name: 'Period 6', start: '12:06', end: '12:46', color: 'border-transparent', num: '6' },
+           { id: 'p7', name: 'Period 7', start: '12:49', end: '13:29', color: 'border-transparent', num: '7' },
+           { id: 'p8', name: 'Period 8', start: '13:32', end: '14:12', color: 'border-transparent', num: '8' },
+           { id: 'p9', name: 'Period 9', start: '14:15', end: '14:55', color: 'border-pink-500', num: '9' }
+       ];
+
+
+       let scheduleData = [];
+       let isEditing = false;
+       let isCinemaMode = false;
+       let notificationsEnabled = false;
+       let lastSentNotification = "";
+
+
+       // --- INIT ---
+       function init() {
+           // Load Schedule Data
+           const storedData = localStorage.getItem('myScheduleData');
+           if (storedData) {
+               scheduleData = JSON.parse(storedData);
+           } else {
+               scheduleData = JSON.parse(JSON.stringify(defaultSchedule)); // Deep copy
+           }
+
+
+           renderSchedule();
+           setupBackground();
+          
+           // Clock & Notification Loop
+           setInterval(updateClock, 1000);
+           updateClock();
+          
+           // Check Notification Perms
+           if (Notification.permission === "granted") {
+               notificationsEnabled = true;
+               document.getElementById('bell-icon').classList.replace('fa-bell-slash', 'fa-bell');
+               document.getElementById('notif-status').classList.remove('hidden');
+           }
+
+
+           fitToScreen();
+           window.addEventListener('resize', fitToScreen);
+       }
+
+
+       // --- RENDERING ---
+       function renderSchedule() {
+           const grid = document.getElementById('schedule-grid');
+           grid.innerHTML = ''; // Clear
+
+
+           // Calculate split point
+           const midPoint = Math.ceil(scheduleData.length / 2);
+           const morningItems = scheduleData.slice(0, midPoint);
+           const afternoonItems = scheduleData.slice(midPoint);
+
+
+           // Left Col
+           const leftCol = document.createElement('div');
+           leftCol.className = 'flex flex-col gap-3';
+           leftCol.innerHTML = `<h2 class="text-xl font-semibold text-gray-300 mb-2 flex items-center gap-2 drop-shadow"><i class="fa-solid fa-sun text-yellow-500"></i> Morning Session</h2>`;
+           morningItems.forEach((item, index) => leftCol.appendChild(createCard(item, index)));
+
+
+           // Right Col
+           const rightCol = document.createElement('div');
+           rightCol.className = 'flex flex-col gap-3';
+           rightCol.innerHTML = `<h2 class="text-xl font-semibold text-gray-300 mb-2 flex items-center gap-2 drop-shadow"><i class="fa-solid fa-moon text-indigo-400"></i> Afternoon Session</h2>`;
+           afternoonItems.forEach((item, index) => rightCol.appendChild(createCard(item, index + midPoint)));
+
+
+           grid.appendChild(leftCol);
+           grid.appendChild(rightCol);
+
+
+           // Update Header Range
+           if(scheduleData.length > 0) {
+               const first = convertTo12Hour(scheduleData[0].start);
+               const last = convertTo12Hour(scheduleData[scheduleData.length-1].end);
+               document.getElementById('header-time-range').innerText = `${first} - ${last}`;
+           }
+       }
+
+
+       function createCard(item, index) {
+           const div = document.createElement('div');
+           div.className = `glass-panel p-3 flex justify-between items-center period-card border-l-4 ${item.color}`;
+          
+           // Time logic
+           const timeDisplay = isEditing
+               ? `<div class="flex flex-col gap-1">
+                    <input type="time" class="time-input" value="${item.start}" onchange="updateTime(${index}, 'start', this.value)">
+                    <input type="time" class="time-input" value="${item.end}" onchange="updateTime(${index}, 'end', this.value)">
+                  </div>`
+               : `<div class="text-right shrink-0">
+                    <div class="text-xl font-light time-badge text-gray-200">${convertTo12Hour(item.start)} - ${convertTo12Hour(item.end)}</div>
+                  </div>`;
+
+
+           // Number Badge logic
+           const numBadge = item.num
+               ? `<div class="bg-blue-500/40 text-blue-100 w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0 shadow-inner">${item.num}</div>`
+               : '';
+
+
+           div.innerHTML = `
+               <div onclick="removePeriod(${index})" class="delete-btn"><i class="fa-solid fa-times"></i></div>
+               <div class="flex items-center gap-4 flex-1">
+                   ${numBadge}
+                   <input type="text"
+                       class="class-input text-lg font-medium"
+                       value="${item.name}"
+                       oninput="updateName(${index}, this.value)"
+                       placeholder="Class Name">
+               </div>
+               ${timeDisplay}
+           `;
+           return div;
+       }
+
+
+       // --- EDITING LOGIC ---
+       function toggleEditMode() {
+           isEditing = !isEditing;
+           const btn = document.getElementById('edit-mode-btn');
+           if(isEditing) {
+               document.body.classList.add('is-editing');
+               btn.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Done Editing`;
+               btn.classList.replace('bg-yellow-600', 'bg-blue-600');
+               btn.classList.replace('hover:bg-yellow-500', 'hover:bg-blue-500');
+           } else {
+               document.body.classList.remove('is-editing');
+               btn.innerHTML = `<i class="fa-solid fa-pen-to-square mr-2"></i> Edit Periods & Times`;
+               btn.classList.replace('bg-blue-600', 'bg-yellow-600');
+               btn.classList.replace('hover:bg-blue-500', 'hover:bg-yellow-500');
+           }
+           renderSchedule(); // Re-render to show/hide inputs
+       }
+
+
+       function addPeriod() {
+           // Add a generic 40 min period after the last one
+           const lastItem = scheduleData[scheduleData.length - 1];
+           let newStartH = 15, newStartM = 0;
+          
+           if(lastItem) {
+               // Parse last end time
+               const [h, m] = lastItem.end.split(':').map(Number);
+               // Add 3 mins transition
+               let startM = m + 3;
+               let startH = h;
+               if(startM >= 60) { startH++; startM -= 60; }
+               newStartH = startH;
+               newStartM = startM;
+           }
+
+
+           // Calc end time (40 mins later)
+           let endM = newStartM + 40;
+           let endH = newStartH;
+           if(endM >= 60) { endH++; endM -= 60; }
+
+
+           // Format HH:MM
+           const fmt = (n) => n.toString().padStart(2, '0');
+          
+           scheduleData.push({
+               id: 'new' + Date.now(),
+               name: 'New Period',
+               start: `${fmt(newStartH)}:${fmt(newStartM)}`,
+               end: `${fmt(endH)}:${fmt(endM)}`,
+               color: 'border-transparent',
+               num: (scheduleData.length + 1).toString()
+           });
+           saveData();
+           renderSchedule();
+       }
+
+
+       function removePeriod(index) {
+           if(confirm("Delete this period?")) {
+               scheduleData.splice(index, 1);
+               saveData();
+               renderSchedule();
+           }
+       }
+
+
+       function updateName(index, value) {
+           scheduleData[index].name = value;
+           saveData();
+       }
+
+
+       function updateTime(index, field, value) {
+           scheduleData[index][field] = value;
+           saveData();
+       }
+
+
+       function saveData() {
+           localStorage.setItem('myScheduleData', JSON.stringify(scheduleData));
+       }
+
+
+       // --- TIME UTILS ---
+       function convertTo12Hour(time24) {
+           if(!time24) return '--:--';
+           let [h, m] = time24.split(':');
+           h = parseInt(h);
+           const suffix = h >= 12 ? 'PM' : 'AM';
+           h = h % 12 || 12;
+           return `${h}:${m} ${suffix}`;
+       }
+
+
+       // --- BACKGROUND LOGIC ---
+       function setupBackground() {
+           const savedBg = localStorage.getItem('custom-bg');
+           const savedType = localStorage.getItem('bg-type'); // 'image' or 'color'
+           const container = document.getElementById('schedule-container');
+           const orbs = document.getElementById('orbs-container');
+
+
+           if (savedBg) {
+               if (savedType === 'color') {
+                   container.style.backgroundImage = 'none';
+                   container.style.backgroundColor = savedBg;
+               } else {
+                   container.style.backgroundImage = `url(${savedBg})`;
+                   container.style.backgroundColor = '';
+               }
+               orbs.classList.add('hidden');
+           } else {
+               resetBackgroundUI();
+           }
+       }
+
+
+       function handleImageUpload(input) {
+           if (input.files && input.files[0]) {
+               const reader = new FileReader();
+               reader.onload = function(e) {
+                   const bgData = e.target.result;
+                   const container = document.getElementById('schedule-container');
+                   container.style.backgroundImage = `url(${bgData})`;
+                   container.style.backgroundColor = '';
+                   document.getElementById('orbs-container').classList.add('hidden');
+                  
+                   try {
+                       localStorage.setItem('custom-bg', bgData);
+                       localStorage.setItem('bg-type', 'image');
+                   } catch(err) {
+                       alert("Image set! (Too large to save permanently, pick smaller image next time)");
+                   }
+               }
+               reader.readAsDataURL(input.files[0]);
+           }
+       }
+
+
+       function handleColorPick(input) {
+           const color = input.value;
+           const container = document.getElementById('schedule-container');
+           container.style.backgroundImage = 'none';
+           container.style.backgroundColor = color;
+           document.getElementById('orbs-container').classList.add('hidden');
+           localStorage.setItem('custom-bg', color);
+           localStorage.setItem('bg-type', 'color');
+       }
+
+
+       function resetBackground() {
+           localStorage.removeItem('custom-bg');
+           localStorage.removeItem('bg-type');
+           resetBackgroundUI();
+       }
+
+
+       function resetBackgroundUI() {
+           const container = document.getElementById('schedule-container');
+           container.style.backgroundImage = 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)';
+           container.style.backgroundColor = '';
+           document.getElementById('orbs-container').classList.remove('hidden');
+       }
+
+
+       function toggleSettings() {
+           const modal = document.getElementById('settings-modal');
+           modal.classList.toggle('active');
+       }
+
+
+       // --- GENERAL APP LOGIC (Clock, Notifs, Scaling) ---
+       function updateClock() {
+           const now = new Date();
+           document.getElementById('live-clock').innerText = now.toLocaleTimeString([], { hour12: true, hour: 'numeric', minute: '2-digit', second: '2-digit' });
+           checkNotifications(now);
+       }
+
+
+       function checkNotifications(now) {
+           const currentH = now.getHours();
+           const currentM = now.getMinutes();
+          
+           scheduleData.forEach(period => {
+               const [endH, endM] = period.end.split(':').map(Number);
+               let targetH = endH;
+               let targetM = endM - 5;
+               if (targetM < 0) { targetM += 60; targetH -= 1; }
+
+
+               if (currentH === targetH && currentM === targetM) {
+                   const notifKey = `${targetH}:${targetM}-${period.id}`;
+                   if (lastSentNotification !== notifKey) {
+                       const msg = `${period.name} ends in 5 minutes!`;
+                       showToast(msg);
+                       if (notificationsEnabled) {
+                           new Notification("Class ending soon", { body: msg, icon: "https://cdn-icons-png.flaticon.com/512/2784/2784459.png" });
+                       }
+                       lastSentNotification = notifKey;
+                   }
+               }
+           });
+       }
+
+
+       function showToast(message) {
+           const toast = document.getElementById('in-app-toast');
+           document.getElementById('toast-message').innerText = message;
+           toast.classList.remove('opacity-0', '-translate-y-10');
+           setTimeout(() => toast.classList.add('opacity-0', '-translate-y-10'), 6000);
+       }
+
+
+       function requestNotificationPermission() {
+           Notification.requestPermission().then(permission => {
+               if (permission === "granted") {
+                   notificationsEnabled = true;
+                   document.getElementById('bell-icon').classList.replace('fa-bell-slash', 'fa-bell');
+                   document.getElementById('notif-status').classList.remove('hidden');
+                   new Notification("Notifications Active", { body: "Test notification successful." });
+               }
+           });
+       }
+
+
+       function fitToScreen() {
+           const scaler = document.getElementById('scaler');
+           const windowW = window.innerWidth;
+           const windowH = window.innerHeight;
+           const scale = Math.min(windowW / 1365, windowH / 767);
+           const buffer = (isCinemaMode || document.fullscreenElement) ? 1 : 0.95;
+           scaler.style.transform = `scale(${scale * buffer})`;
+          
+           if (isCinemaMode || document.fullscreenElement) {
+               document.body.classList.add('is-fullscreen');
+           } else {
+               document.body.classList.remove('is-fullscreen');
+           }
+       }
+
+
+       async function toggleCinemaMode() {
+           const docEl = document.documentElement;
+           const icon = document.getElementById('fs-icon');
+           if (!isCinemaMode && !document.fullscreenElement) {
+               try { await docEl.requestFullscreen(); } catch(e){}
+               isCinemaMode = true;
+               icon.classList.replace('fa-expand', 'fa-compress');
+           } else {
+               if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch(e){} }
+               isCinemaMode = false;
+               icon.classList.replace('fa-compress', 'fa-expand');
+           }
+           fitToScreen();
+       }
+
+
+       // --- DOWNLOAD SOURCE ---
+       function downloadSourceCode() {
+           // Need to save the current state of scheduleData into the HTML for the next load
+           // We do this by creating a script tag with the data
+           const dataScript = `<script>window.initialData = ${JSON.stringify(scheduleData)};<\/script>`;
+          
+           // We also need to capture current background if set
+           let bgScript = '';
+           const bg = localStorage.getItem('custom-bg');
+           if(bg) {
+               bgScript = `<script>window.initialBg = "${bg}"; window.initialBgType = "${localStorage.getItem('bg-type')}";<\/script>`;
+           }
+
+
+           let html = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+           // Inject the data scripts before the closing body
+           html = html.replace('</body>', `${dataScript}${bgScript}</body>`);
+          
+           const blob = new Blob([html], {type: "text/html"});
+           const url = URL.createObjectURL(blob);
+           const a = document.createElement("a");
+           a.href = url;
+           a.download = "index.html";
+           document.body.appendChild(a);
+           a.click();
+           document.body.removeChild(a);
+       }
+      
+       // Handle injected data from downloaded file
+       if(window.initialData) {
+           localStorage.setItem('myScheduleData', JSON.stringify(window.initialData));
+       }
+       if(window.initialBg) {
+           localStorage.setItem('custom-bg', window.initialBg);
+           localStorage.setItem('bg-type', window.initialBgType);
+       }
+
+
+       // START
+       init();
+
+
+       // Install button logic
+       let deferredPrompt;
+       window.addEventListener('beforeinstallprompt', (e) => {
+           e.preventDefault();
+           deferredPrompt = e;
+           document.getElementById('install-btn').classList.remove('hidden');
+       });
+       document.getElementById('install-btn').addEventListener('click', async () => {
+           if (deferredPrompt) {
+               deferredPrompt.prompt();
+               deferredPrompt = null;
+               document.getElementById('install-btn').classList.add('hidden');
+           }
+       });
+   </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Schedule App</title>
+
+
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2784/2784459.png" type="image/png">
+
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="My Schedule">
+    <meta name="theme-color" content="#0f172a">
+
+
+    <link rel="manifest" href='data:application/manifest+json;charset=utf-8,{"name":"My Schedule","short_name":"Schedule","start_url":".","display":"standalone","background_color":"#000000","theme_color":"#0f172a","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/2784/2784459.png","sizes":"512x512","type":"image/png"}]}'>
+
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+
+
+<body>
+<!-- EVERYTHING ABOVE AND BELOW IS UNCHANGED VISUALLY -->
+
+
+<!-- SETTINGS MODAL ADDITION (inside existing modal content, bottom) -->
+<!-- THIS DOES NOT CHANGE STYLE — uses existing Tailwind classes -->
+
+
+<script>
+/* ==================== NEW STATE (SAFE) ==================== */
+let selectedTimezone =
+    localStorage.getItem('timezone') ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+
+let notifyMinutes =
+    parseInt(localStorage.getItem('notifyMinutes')) || 5;
+/* ========================================================== */
+</script>
+
+
+<!-- ORIGINAL HTML CONTINUES -->
+<!-- (No visible HTML changes above this point) -->
+
+
+<script>
+/* ==================== INIT PATCH ==================== */
+const originalInit = init;
+init = function () {
+    originalInit();
+
+
+    // Ask notification permission ONCE on first load
+    if (!localStorage.getItem('notifAsked')) {
+        Notification.requestPermission().then(p => {
+            localStorage.setItem('notifAsked', 'true');
+            if (p === "granted") {
+                notificationsEnabled = true;
+                document.getElementById('bell-icon')
+                    .classList.replace('fa-bell-slash', 'fa-bell');
+                document.getElementById('notif-status')
+                    .classList.remove('hidden');
+            }
+        });
+    }
+
+
+    injectTimeSettings();
+};
+/* ===================================================== */
+
+
+
+
+/* ==================== TIMEZONE CLOCK ==================== */
+const originalUpdateClock = updateClock;
+updateClock = function () {
+    const now = new Date(
+        new Date().toLocaleString("en-US", {
+            timeZone: selectedTimezone
+        })
+    );
+
+
+    document.getElementById('live-clock').innerText =
+        now.toLocaleTimeString([], {
+            hour12: true,
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
+
+    checkNotifications(now);
+};
+/* ======================================================== */
+
+
+
+
+/* ==================== NOTIFICATION PATCH ==================== */
+const originalCheckNotifications = checkNotifications;
+checkNotifications = function (now) {
+    const currentH = now.getHours();
+    const currentM = now.getMinutes();
+
+
+    scheduleData.forEach(period => {
+        const [endH, endM] = period.end.split(':').map(Number);
+        let targetH = endH;
+        let targetM = endM - notifyMinutes;
+        if (targetM < 0) { targetM += 60; targetH--; }
+
+
+        if (currentH === targetH && currentM === targetM) {
+            const notifKey = `${targetH}:${targetM}-${period.id}`;
+            if (lastSentNotification !== notifKey) {
+                const msg = `${period.name} ends in ${notifyMinutes} minutes!`;
+                showToast(msg);
+                if (notificationsEnabled) {
+                    new Notification("Class ending soon", {
+                        body: msg,
+                        icon: "https://cdn-icons-png.flaticon.com/512/2784/2784459.png"
+                    });
+                }
+                lastSentNotification = notifKey;
+            }
+        }
+    });
+};
+/* =========================================================== */
+
+
+
+
+/* ==================== SETTINGS UI (MINIMAL) ==================== */
+function injectTimeSettings() {
+    const modal = document.querySelector('.modal-content .space-y-6');
+    if (!modal || document.getElementById('timezone-select')) return;
+
+
+    const div = document.createElement('div');
+    div.innerHTML = `
+        <div>
+            <h3 class="text-sm font-bold text-gray-400 uppercase mb-3">Time Settings</h3>
+
+
+            <label class="text-xs text-gray-400">Timezone</label>
+            <select id="timezone-select"
+                class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm mb-3"></select>
+
+
+            <label class="text-xs text-gray-400">
+                Notify before period ends (minutes)
+            </label>
+            <input id="notif-minutes" type="number" min="1" max="60"
+                class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+        </div>
+    `;
+    modal.appendChild(div);
+
+
+    const tzSelect = document.getElementById('timezone-select');
+    Intl.supportedValuesOf('timeZone').forEach(tz => {
+        const opt = document.createElement('option');
+        opt.value = tz;
+        opt.textContent = tz;
+        if (tz === selectedTimezone) opt.selected = true;
+        tzSelect.appendChild(opt);
+    });
+
+
+    tzSelect.onchange = () => {
+        selectedTimezone = tzSelect.value;
+        localStorage.setItem('timezone', selectedTimezone);
+    };
+
+
+    const nm = document.getElementById('notif-minutes');
+    nm.value = notifyMinutes;
+    nm.onchange = () => {
+        notifyMinutes = parseInt(nm.value);
+        localStorage.setItem('notifyMinutes', notifyMinutes);
+    };
+}
+/* ============================================================= */
+</script>
+
+
+</body>
+</html>
